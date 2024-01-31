@@ -31,14 +31,10 @@ builder:build()
 ---@class Test: Parent 测试
 ---@field name string 名字
 ---@field age number 年龄
-local Test = class()
+local Test = class("Test", Parent)
 -- 获取构建器
 local builder = Test.builder
 
--- 设置 class 名称
-builder.className = "Test"
--- 继承父类
-builder.extends = Parent
 -- 初始化 class 成员
 builder.fields = {
 	name = 'limao996',
