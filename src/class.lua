@@ -12,18 +12,34 @@
 --- Class 构建器
 ---@class ClassBuilder
 ---@field class Any 归属类
----@field fields table 初始化成员
 ---@field className string 类名称
-local ClassBuilder = {}
+---@field fields table 初始化成员
+---@field extends Any[]|Any 类继承
+---@field methods function[] 类方法
+---@field meta function[] 类方法
+---@field ctor string[]|string 构造方法
+local ClassBuilder = {
+	className = "class",
+	ctor = "new"
+}
 
 --- Class 基类
 ---@class Any
----@field builder ClassBuilder|nil
+---@field builder ClassBuilder|nil 类构建器
 local Any = {}
 
 --- Class 构建时元表
 local Meta = {
 	__newindex = function(self, key, value)
+		---@type ClassBuilder
+		local builder = self.builder
+		if type(value) == "function" then
+			builder.methods = builder.methods or {}
+			rawset(builder.methods, key, value)
+		else
+			builder.fields = builder.fields or {}
+			rawset(builder.fields, key, value)
+		end
 	end
 }
 
@@ -47,8 +63,24 @@ end
 ---@private
 ---@return ClassBuilder
 function ClassBuilder:new()
-	local o = { __index = self }
-	return setmetatable(o, o)
+	-- 创建构建器对象并返回
+	local builder = { __index = self }
+	return setmetatable(builder, builder)
+end
+
+--- 构建 Class
+---@return void
+function ClassBuilder:build()
+	-- 获取归属类
+	local class = self.class
+
+	-- 设置类名称
+	rawset(class, "__name", self.className)
+
+	-- 初始化成员
+	for k, v in pairs(self.fields) do
+		rawset(class, k, v)
+	end
 end
 
 -- 设置元方法

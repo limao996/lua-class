@@ -38,7 +38,7 @@ local builder = Test.builder
 -- 设置 class 名称
 builder.className = "Test"
 -- 继承父类
-builder.extends.set(Parent)
+builder.extends = { Parent }
 -- 初始化 class 成员
 builder.fields = {
 	name = 'limao996',
@@ -46,7 +46,7 @@ builder.fields = {
 }
 
 -- 设置构造方法
-builder.ctor:set('new')
+builder.ctor = { "new" }
 
 -- 声明 class 方法
 --- 静态方法

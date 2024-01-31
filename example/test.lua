@@ -14,4 +14,3 @@ local Class = require "class"
 local Test = Class()
 local builder = Test.builder
 
-print(builder)
