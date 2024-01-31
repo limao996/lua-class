@@ -14,7 +14,7 @@
 ---@field class Any 归属类
 ---@field className string 类名称
 ---@field fields table 初始化成员
----@field extends Any[]|Any 类继承
+---@field extends Any 类继承
 ---@field methods function[] 类方法
 ---@field meta function[] 类方法
 ---@field ctor string[]|string 构造方法
@@ -44,16 +44,20 @@ local Meta = {
 }
 
 --- 创建 Class
+---@param name string 类名称
+---@param extends Any 继承类
 ---@return Any
-local function Class()
+local function Class(name, extends)
 	-- 实例化对象
 	---@type ClassBuilder
 	local builder = ClassBuilder:new()
 	---@type Any
 	local cls = setmetatable({ builder = builder }, Meta)
 
-	-- 为构建器绑定归属类
+	-- 初始化构建器属性
 	builder.class = cls
+	builder.className = name or builder.className
+	builder.extends = extends or builder.extends
 
 	-- 返回 Class 对象
 	return cls
@@ -74,8 +78,14 @@ function ClassBuilder:build()
 	-- 获取归属类
 	local class = self.class
 
+	-- 重新设置元表
+	setmetatable(class, class)
+
 	-- 设置类名称
 	rawset(class, "__name", self.className)
+
+	-- 设置父类
+	rawset(class, "__extends", self.extends)
 
 	-- 初始化成员
 	for k, v in pairs(self.fields) do
