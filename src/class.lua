@@ -39,7 +39,7 @@ local ClassBuilder = {
 local Any = {}
 
 --- Class 构建时元表
-local Meta = {
+local BuildMeta = {
 	__newindex = function(self, key, value)
 		---@type ClassBuilder
 		local builder = self.builder
@@ -64,16 +64,17 @@ local Meta = {
 	end
 }
 
-local function ClassMeta__tostring(self)
-	return string.format(
-			"class %s: %s",
-			self.__name,
-			self.__address)
-end
-
-local function ClassMeta__type(self)
-	return string.format("class %s", self.__name)
-end
+local ClassMeta = {
+	__tostring = function(self)
+		return string.format(
+				"class %s: %s",
+				self.__name,
+				self.__address)
+	end,
+	__type = function(self)
+		return string.format("class %s", self.__name)
+	end
+}
 
 --- 创建 Class
 ---@param name string 类名称
@@ -86,8 +87,8 @@ local function Class(name, extends)
 	---@type Any
 	local cls = {
 		builder = builder,
-		__tostring = ClassMeta__tostring,
-		__type = ClassMeta__type,
+		__tostring = ClassMeta.__tostring,
+		__type = ClassMeta.__type,
 	}
 
 	-- 记录内存地址
@@ -99,7 +100,7 @@ local function Class(name, extends)
 	builder.extends = extends or builder.extends
 
 	-- 返回 Class 对象
-	return setmetatable(cls, Meta)
+	return setmetatable(cls, BuildMeta)
 end
 
 --- 实例化构建器
@@ -135,7 +136,6 @@ function ClassBuilder:build()
 		end
 	end
 
-
 	-- 初始化方法
 	if self.methods then
 		for k, v in pairs(self.methods) do
@@ -147,9 +147,6 @@ end
 -- 设置元方法
 ---@private
 Any.__name = "Any"
-
----@class Number:Any
-local Number = 0
 
 -- 返回顶级函数
 return Class
