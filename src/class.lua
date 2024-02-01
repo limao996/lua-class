@@ -8,6 +8,13 @@
 --- [Github](https://github.com/limao996/lua-class)
 ---
 
+--- 获取内存地址
+---@param obj table
+---@return string
+local function getAddress(obj)
+	local str = tostring(obj)
+	return str:match("(0?x?%x+)$")
+end
 
 --- Class 构建器
 ---@class ClassBuilder
@@ -26,6 +33,9 @@ local ClassBuilder = {
 --- Class 基类
 ---@class Any
 ---@field builder ClassBuilder|nil 类构建器
+---@field super Any 父类
+---@field private __name string 类名称
+---@field private __address string 内存地址
 local Any = {}
 
 --- Class 构建时元表
@@ -40,8 +50,30 @@ local Meta = {
 			builder.fields = builder.fields or {}
 			rawset(builder.fields, key, value)
 		end
+	end,
+	__tostring = function(self)
+		return string.format(
+				"@Build -> class %s: %s",
+				self.builder.className,
+				self.__address)
+	end,
+	__type = function(self)
+		return string.format(
+				"@Build -> class %s",
+				self.builder.className)
 	end
 }
+
+local function ClassMeta__tostring(self)
+	return string.format(
+			"class %s: %s",
+			self.__name,
+			self.__address)
+end
+
+local function ClassMeta__type(self)
+	return string.format("class %s", self.__name)
+end
 
 --- 创建 Class
 ---@param name string 类名称
@@ -52,7 +84,14 @@ local function Class(name, extends)
 	---@type ClassBuilder
 	local builder = ClassBuilder:new()
 	---@type Any
-	local cls = setmetatable({ builder = builder }, Meta)
+	local cls = {
+		builder = builder,
+		__tostring = ClassMeta__tostring,
+		__type = ClassMeta__type,
+	}
+
+	-- 记录内存地址
+	cls.__address = getAddress(cls)
 
 	-- 初始化构建器属性
 	builder.class = cls
@@ -60,7 +99,7 @@ local function Class(name, extends)
 	builder.extends = extends or builder.extends
 
 	-- 返回 Class 对象
-	return cls
+	return setmetatable(cls, Meta)
 end
 
 --- 实例化构建器
@@ -78,24 +117,39 @@ function ClassBuilder:build()
 	-- 获取归属类
 	local class = self.class
 
-	-- 重新设置元表
+	-- 解除构建状态
 	setmetatable(class, class)
+	class.builder = nil
 
 	-- 设置类名称
 	rawset(class, "__name", self.className)
 
 	-- 设置父类
-	rawset(class, "__extends", self.extends)
+	rawset(class, "__index", self.extends)
+	rawset(class, "super", self.extends)
 
 	-- 初始化成员
-	for k, v in pairs(self.fields) do
-		rawset(class, k, v)
+	if self.fields then
+		for k, v in pairs(self.fields) do
+			rawset(class, k, v)
+		end
+	end
+
+
+	-- 初始化方法
+	if self.methods then
+		for k, v in pairs(self.methods) do
+			rawset(class, k, v)
+		end
 	end
 end
 
 -- 设置元方法
 ---@private
 Any.__name = "Any"
+
+---@class Number:Any
+local Number = 0
 
 -- 返回顶级函数
 return Class
