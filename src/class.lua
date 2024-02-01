@@ -8,6 +8,9 @@
 --- [Github](https://github.com/limao996/lua-class)
 ---
 
+local _M = {}
+local _ENV = setmetatable(_M, { __index = _G })
+
 --- 获取内存地址
 ---@param obj table
 ---@return string
@@ -15,6 +18,33 @@ local function getAddress(obj)
 	local str = tostring(obj)
 	return str:match("(0?x?%x+)$")
 end
+
+local ClassMeta = {
+	__tostring = function(self)
+		return string.format(
+				"class %s: %s",
+				self.__name,
+				self.__address)
+	end,
+	__type = function(self)
+		return string.format("class %s", self.__name)
+	end
+}
+
+--- Class 基类
+---@class Any
+---@field builder ClassBuilder|nil 类构建器
+---@field super Any 父类
+---@field private __name string 类名称
+---@field private __class Any 归属类
+---@field private __address string 内存地址
+Any = {
+	__name = "Any",
+	---@private
+	__tostring = ClassMeta.__tostring,
+	---@private
+	__type = ClassMeta.__type,
+}
 
 --- Class 构建器
 ---@class ClassBuilder
@@ -26,17 +56,51 @@ end
 ---@field meta function[] 类方法
 ---@field ctor string[]|string 构造方法
 local ClassBuilder = {
-	className = "class",
-	ctor = "new"
+	className = "Any",
+	ctor = "new",
+	extends = Any,
 }
 
---- Class 基类
----@class Any
----@field builder ClassBuilder|nil 类构建器
----@field super Any 父类
----@field private __name string 类名称
----@field private __address string 内存地址
-local Any = {}
+--- 检查实例归属
+---@param instance Any 类或实例
+---@return boolean
+function Any:instanceOf(instance)
+	while true do
+		if self.__class == instance.__class then
+			return true
+		end
+		self = self.super
+		if not self then
+			return false
+		end
+	end
+end
+
+--- 获取类
+---@return Any
+function Any:getClass()
+	return self.__class
+end
+
+--- 获取类名称
+---@return string
+function Any:getClassName()
+	return self.__name
+end
+
+--- 是否为实例
+---@return string
+function Any:isInstance()
+	return self.__index == self.__class
+end
+
+--- 是否为实例
+---@generic T
+---@param fn fun(self:Any):T
+---@return T
+function Any:let(fn)
+	return fn(self)
+end
 
 --- Class 构建时元表
 local BuildMeta = {
@@ -64,23 +128,11 @@ local BuildMeta = {
 	end
 }
 
-local ClassMeta = {
-	__tostring = function(self)
-		return string.format(
-				"class %s: %s",
-				self.__name,
-				self.__address)
-	end,
-	__type = function(self)
-		return string.format("class %s", self.__name)
-	end
-}
-
 --- 创建 Class
 ---@param name string 类名称
 ---@param extends Any 继承类
 ---@return Any
-local function Class(name, extends)
+function Class(name, extends)
 	-- 实例化对象
 	---@type ClassBuilder
 	local builder = ClassBuilder:new()
@@ -91,8 +143,9 @@ local function Class(name, extends)
 		__type = ClassMeta.__type,
 	}
 
-	-- 记录内存地址
+	-- 初始化类属性
 	cls.__address = getAddress(cls)
+	cls.__class = cls
 
 	-- 初始化构建器属性
 	builder.class = cls
@@ -144,9 +197,14 @@ function ClassBuilder:build()
 	end
 end
 
--- 设置元方法
----@private
-Any.__name = "Any"
+-- 初始化类属性
+Any.__address = getAddress(Any)
+Any.__class = Any
+-- 绑定元表
+setmetatable(Any, Any)
 
--- 返回顶级函数
-return Class
+-- 加载到全局环境
+for k, v in pairs(_M) do
+	_G[k] = v
+end
+return _M
