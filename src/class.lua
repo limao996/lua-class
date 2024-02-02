@@ -16,7 +16,7 @@ local _ENV = setmetatable(_M, { __index = _G })
 ---@return string
 local function getAddress(obj)
 	local str = tostring(obj)
-	return str:match("(0?x?%x+)$")
+	return str:match("0*(%x+)$")
 end
 
 local ClassMeta = {
@@ -29,7 +29,7 @@ local ClassMeta = {
 					meta.__name)
 		end
 		return string.format(
-				"class %s@%s",
+				"%s@%s",
 				meta.__name, address)
 	end
 }
@@ -68,6 +68,7 @@ setmetatable(Any, AnyMeta)
 local ClassBuilder = {
 	className = "Any",
 	ctor = "new",
+	mainCtor = 'new',
 	extends = Any,
 }
 
@@ -144,12 +145,23 @@ function Any:newInstance()
 	return setmetatable(instance, meta)
 end
 
---- 是否为实例
+--- 内联函数
+--- 输入自身为参数调用函数并返回值
 ---@generic T
 ---@param fn fun(self:Any):T
 ---@return T
 function Any:let(fn)
 	return fn(self)
+end
+
+--- 内联函数
+--- 输入自身为参数调用函数并返回自身
+---@generic T
+---@param fn fun(self:Any):self
+---@return T
+function Any:also(fn)
+	fn(self)
+	return self
 end
 
 --- Class 构建时元表
@@ -256,6 +268,7 @@ function ClassBuilder:build()
 	-- 初始化方法
 	local methods = self.methods
 	if methods then
+		-- 载入命名构造方法
 		local ctor = self.ctor
 		if type(ctor) == "string" then
 			ctor = { ctor }
@@ -270,15 +283,14 @@ function ClassBuilder:build()
 				end
 			end
 		end
+		-- 载入方法
 		for k, v in pairs(methods) do
 			rawset(class, k, v)
 		end
 	end
 
-	local mainCtor = self.mainCtor
-	if mainCtor then
-		meta.__call = rawget(class, mainCtor)
-	end
+	-- 载入主构造方法
+	meta.__call = rawget(class, self.mainCtor)
 
 	-- 解除构建状态
 	setmetatable(class, meta)

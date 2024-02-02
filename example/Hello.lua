@@ -12,7 +12,7 @@ require "class"
 
 -- 声明父类 class
 ---@class Parent: Any 父类
-local Parent = Class()
+local Parent = Class("org.limao.Parent")
 -- 获取构建器
 local builder = Parent.builder
 
@@ -31,7 +31,7 @@ builder:build()
 ---@class Test: Parent 测试
 ---@field name string 名字
 ---@field age number 年龄
-local Test = Class("Test", Parent)
+local Test = Class("org.limao.Test", Parent)
 -- 获取构建器
 local builder = Test.builder
 
@@ -77,7 +77,11 @@ function Test.add(a, b)
 	return Test.super.add(a) - 1 + b
 end
 
+print(Test)
 -- 构建 class
 builder:build()
+print(Test)
+print(Test())
+
 -- 返回 class
 return Test

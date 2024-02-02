@@ -15,7 +15,7 @@ require "class"
 local Map = Class("Map")
 local builder = Map.builder
 
--- 设置匿名构造方法
+-- 设置命名构造方法
 builder.ctor = { "new" }
 -- 设置主构造方法
 builder.mainCtor = "new"
@@ -66,4 +66,3 @@ map2.a = 3
 map2.b = 4
 print(map1:instanceOf(Map))
 print(map1)
-print(map2)
