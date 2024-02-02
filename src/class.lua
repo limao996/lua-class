@@ -21,40 +21,50 @@ end
 
 local ClassMeta = {
 	__tostring = function(self)
+		local meta = self:getMeta()
+		local address = meta.__address
+		if not address then
+			return string.format(
+					"class %s",
+					meta.__name)
+		end
 		return string.format(
-				"class %s: %s",
-				self.__name,
-				self.__address)
-	end,
-	__type = function(self)
-		return string.format("class %s", self.__name)
+				"class %s@%s",
+				meta.__name, address)
 	end
 }
 
 --- Class 基类
 ---@class Any
 ---@field builder ClassBuilder|nil 类构建器
+---@field Meta table|nil 构建时类元表
 ---@field super Any 父类
+Any = {}
+
 ---@field private __name string 类名称
 ---@field private __class Any 归属类
 ---@field private __address string 内存地址
-Any = {
+---@field private __fields table|fun(self:Any):void 初始化成员
+local AnyMeta = {
 	__name = "Any",
-	---@private
 	__tostring = ClassMeta.__tostring,
-	---@private
-	__type = ClassMeta.__type,
+	__class = Any
 }
+-- 绑定元表
+setmetatable(Any, AnyMeta)
 
 --- Class 构建器
 ---@class ClassBuilder
 ---@field class Any 归属类
 ---@field className string 类名称
----@field fields table 初始化成员
+---@field address string 内存地址
+---@field fields table|fun(self:Any):void 初始化成员
 ---@field extends Any 类继承
 ---@field methods function[] 类方法
 ---@field meta function[] 类方法
 ---@field ctor string[]|string 构造方法
+---@field mainCtor string 主构造方法
+
 local ClassBuilder = {
 	className = "Any",
 	ctor = "new",
@@ -66,7 +76,7 @@ local ClassBuilder = {
 ---@return boolean
 function Any:instanceOf(instance)
 	while true do
-		if self.__class == instance.__class then
+		if self:getClass() == instance:getClass() then
 			return true
 		end
 		self = self.super
@@ -79,19 +89,59 @@ end
 --- 获取类
 ---@return Any
 function Any:getClass()
-	return self.__class
+	return self:getMeta().__class
 end
 
 --- 获取类名称
 ---@return string
 function Any:getClassName()
-	return self.__name
+	return self:getMeta().__name
 end
 
 --- 是否为实例
----@return string
+---@return boolean
 function Any:isInstance()
-	return self.__index == self.__class
+	return not not self:getMeta().__address
+end
+
+--- 获取父类
+---@return Any
+function Any:getSuper()
+	return self.super
+end
+
+--- 获取类元表
+---@return any
+function Any:getMeta()
+	return getmetatable(self)
+end
+
+--- 获取父类元表
+---@return any
+function Any:getSuperMeta()
+	return getmetatable(self.super)
+end
+
+--- 创建实例
+---@return self
+function Any:newInstance()
+	local instance = {}
+	local meta = { __address = getAddress(instance) }
+	for k, v in pairs(self:getMeta()) do
+		meta[k] = v
+	end
+	meta.__index = self
+	local fields = meta.__fields
+	if fields then
+		if type(fields) == "table" then
+			for k, v in pairs(fields) do
+				rawset(instance, k, v)
+			end
+		else
+			fields(instance)
+		end
+	end
+	return setmetatable(instance, meta)
 end
 
 --- 是否为实例
@@ -104,6 +154,15 @@ end
 
 --- Class 构建时元表
 local BuildMeta = {
+	__index = function(self, key)
+		if key == "Meta" then
+			local builder = rawget(self, 'builder')
+			local meta = builder.meta or {}
+			builder.meta = meta
+			return meta
+		end
+		return rawget(self, key)
+	end,
 	__newindex = function(self, key, value)
 		---@type ClassBuilder
 		local builder = self.builder
@@ -116,16 +175,11 @@ local BuildMeta = {
 		end
 	end,
 	__tostring = function(self)
-		return string.format(
-				"@Build -> class %s: %s",
-				self.builder.className,
-				self.__address)
-	end,
-	__type = function(self)
+		local builder = self.builder
 		return string.format(
 				"@Build -> class %s",
-				self.builder.className)
-	end
+				builder.className)
+	end,
 }
 
 --- 创建 Class
@@ -139,19 +193,12 @@ function Class(name, extends)
 	---@type Any
 	local cls = {
 		builder = builder,
-		__tostring = ClassMeta.__tostring,
-		__type = ClassMeta.__type,
 	}
-
-	-- 初始化类属性
-	cls.__address = getAddress(cls)
-	cls.__class = cls
 
 	-- 初始化构建器属性
 	builder.class = cls
 	builder.className = name or builder.className
 	builder.extends = extends or builder.extends
-
 	-- 返回 Class 对象
 	return setmetatable(cls, BuildMeta)
 end
@@ -170,38 +217,73 @@ end
 function ClassBuilder:build()
 	-- 获取归属类
 	local class = self.class
+	-- 获取元表
+	local meta = self.meta or {}
+	self.meta = meta
 
-	-- 解除构建状态
-	setmetatable(class, class)
-	class.builder = nil
+	-- 解除元表
+	setmetatable(class, nil)
 
-	-- 设置类名称
-	rawset(class, "__name", self.className)
+	-- 设置元属性
+	rawset(meta, "__name", self.className)
+	rawset(meta, "__class", class)
+	rawset(meta, "__fields", self.fields)
 
 	-- 设置父类
-	rawset(class, "__index", self.extends)
-	rawset(class, "super", self.extends)
+	local extends = self.extends
+	if extends then
+		rawset(meta, "__index", extends)
+		rawset(class, "super", extends)
+		for k, v in pairs(getmetatable(extends)) do
+			if meta[k] == nil then
+				meta[k] = v
+			end
+		end
+	end
 
 	-- 初始化成员
-	if self.fields then
-		for k, v in pairs(self.fields) do
-			rawset(class, k, v)
+	local fields = self.fields
+	if fields then
+		if type(fields) == "table" then
+			for k, v in pairs(fields) do
+				rawset(class, k, v)
+			end
+		else
+			fields(class)
 		end
 	end
 
 	-- 初始化方法
-	if self.methods then
-		for k, v in pairs(self.methods) do
+	local methods = self.methods
+	if methods then
+		local ctor = self.ctor
+		if type(ctor) == "string" then
+			ctor = { ctor }
+		end
+		for k, v in pairs(ctor) do
+			local method = methods[v]
+			if method then
+				methods[v] = function(self, ...)
+					local instance = self:newInstance()
+					method(instance, ...)
+					return instance
+				end
+			end
+		end
+		for k, v in pairs(methods) do
 			rawset(class, k, v)
 		end
 	end
-end
 
--- 初始化类属性
-Any.__address = getAddress(Any)
-Any.__class = Any
--- 绑定元表
-setmetatable(Any, Any)
+	local mainCtor = self.mainCtor
+	if mainCtor then
+		meta.__call = rawget(class, mainCtor)
+	end
+
+	-- 解除构建状态
+	setmetatable(class, meta)
+	class.builder = nil
+end
 
 -- 加载到全局环境
 for k, v in pairs(_M) do

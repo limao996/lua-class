@@ -8,7 +8,7 @@
 --- [Github](https://github.com/limao996/lua-class)
 ---
 
-local Class = require "class"
+require "class"
 
 -- 声明父类 class
 ---@class Parent: Any 父类
@@ -31,7 +31,7 @@ builder:build()
 ---@class Test: Parent 测试
 ---@field name string 名字
 ---@field age number 年龄
-local Test = class("Test", Parent)
+local Test = Class("Test", Parent)
 -- 获取构建器
 local builder = Test.builder
 
