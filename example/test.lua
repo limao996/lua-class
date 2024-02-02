@@ -66,3 +66,4 @@ map2.a = 3
 map2.b = 4
 print(map1:instanceOf(Map))
 print(map1)
+
