@@ -11,6 +11,14 @@
 local _M = {}
 local _ENV = setmetatable(_M, { __index = _G })
 
+local packagePath
+
+--- 包名
+---@param path string
+function Package(path)
+	packagePath = path
+end
+
 --- 获取内存地址
 ---@param obj table
 ---@return string
@@ -211,6 +219,11 @@ function Class(name, extends)
 	builder.class = cls
 	builder.className = name or builder.className
 	builder.extends = extends or builder.extends
+
+	if packagePath then
+		builder.className = packagePath .. '.' .. builder.className
+	end
+
 	-- 返回 Class 对象
 	return setmetatable(cls, BuildMeta)
 end

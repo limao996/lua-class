@@ -10,9 +10,12 @@
 
 require "class"
 
+--- 设置包名
+Package("org.limao")
+
 -- 声明父类 class
 ---@class Parent: Any 父类
-local Parent = Class("org.limao.Parent")
+local Parent = Class("Parent")
 -- 获取构建器
 local builder = Parent.builder
 
@@ -31,7 +34,7 @@ builder:build()
 ---@class Test: Parent 测试
 ---@field name string 名字
 ---@field age number 年龄
-local Test = Class("org.limao.Test", Parent)
+local Test = Class("Test", Parent)
 -- 获取构建器
 local builder = Test.builder
 

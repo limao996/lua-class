@@ -10,9 +10,12 @@
 
 require "class"
 
+--- 设置包名
+Package("org.limao")
+
 ---@class Map: Any
 ---@field data table 数据表
-local Map = Class("Map")
+Map = Class("Map")
 local builder = Map.builder
 
 -- 设置命名构造方法
