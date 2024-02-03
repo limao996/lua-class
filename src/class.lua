@@ -13,8 +13,9 @@ local _ENV = setmetatable(_M, { __index = _G })
 
 local packagePath
 
---- 包名
----@param path string
+--- 设置包名
+--- 使后续创建的class名称包含该包名
+---@param path string|nil
 function Package(path)
 	packagePath = path
 end
@@ -43,6 +44,7 @@ local ClassMeta = {
 }
 
 --- Class 基类
+--- 创建的所有class都将继承该类
 ---@class Any
 ---@field builder ClassBuilder|nil 类构建器
 ---@field Meta table|nil 构建时类元表
@@ -62,6 +64,15 @@ local AnyMeta = {
 setmetatable(Any, AnyMeta)
 
 --- Class 构建器
+---> 创建 class 后通过 builder 成员即可得到该对象，
+---> 之后修改该对象的属性与调用该对象的方法，可修改class的配置。
+---> 修改之后调用该对象的 build 方法即应用构建，
+---> class 将退出构建状态，并失去 builder 成员。
+---```lua
+---local Person = Class("Person")
+---local builder = Person.builder
+---builder:build()
+---```
 ---@class ClassBuilder
 ---@field class Any 归属类
 ---@field className string 类名称
@@ -72,7 +83,6 @@ setmetatable(Any, AnyMeta)
 ---@field meta function[] 类方法
 ---@field ctor string[]|string 构造方法
 ---@field mainCtor string 主构造方法
-
 local ClassBuilder = {
 	className = "Any",
 	ctor = "new",
