@@ -54,7 +54,7 @@ Any = {}
 ---@field private __name string 类名称
 ---@field private __class Any 归属类
 ---@field private __address string 内存地址
----@field private __fields table|fun(self:Any):void 初始化成员
+---@field private __fields table|fun(obj:Any, isInstance:boolean):void 初始化成员
 local AnyMeta = {
 	__name = "Any",
 	__tostring = ClassMeta.__tostring,
@@ -77,7 +77,7 @@ setmetatable(Any, AnyMeta)
 ---@field class Any 归属类
 ---@field className string 类名称
 ---@field address string 内存地址
----@field fields table|fun(self:Any):void 初始化成员
+---@field fields table|fun(obj:Any, isInstance:boolean):void 初始化成员
 ---@field extends Any 类继承
 ---@field methods function[] 类方法
 ---@field meta function[] 类方法
@@ -157,7 +157,7 @@ function Any:newInstance()
 				rawset(instance, k, v)
 			end
 		else
-			fields(instance)
+			fields(instance, true)
 		end
 	end
 	return setmetatable(instance, meta)
@@ -284,7 +284,7 @@ function ClassBuilder:build()
 				rawset(class, k, v)
 			end
 		else
-			fields(class)
+			fields(class, false)
 		end
 	end
 
