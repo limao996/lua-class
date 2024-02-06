@@ -12,7 +12,7 @@
 require "class"
 
 -- 设置包名（一定不要在后面导入其它包）
-Package("org.limao")
+Package("org.example")
 
 -- 创建Class并使用EmmyLua注解插件添加Class声明并继承Any类，以获得智能补全支持
 --- 类
@@ -23,11 +23,10 @@ Package("org.limao")
 local Person = Class("Person")
 -- 获取Class构建器
 local builder = Person.builder
-
 -- 初始化成员
 Person.origin = "China"
 
--- 声明构造方法，默认构造方法为new
+-- 实现构造方法，默认构造方法为new
 -- 构造方法将传入实例为self，也将自动返回实例
 -- 无需手动return
 --- 实例化

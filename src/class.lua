@@ -55,10 +55,14 @@ Any = {}
 ---@field private __class Any 归属类
 ---@field private __address string 内存地址
 ---@field private __fields table|fun(obj:Any, isInstance:boolean):void 初始化成员
+---@field private __mainCtor string 主构建器
+---@field private __ctor string 主构建器
 local AnyMeta = {
 	__name = "Any",
 	__tostring = ClassMeta.__tostring,
-	__class = Any
+	__class = Any,
+	__mainCtor = "new",
+	__ctor="new"
 }
 -- 绑定元表
 setmetatable(Any, AnyMeta)
@@ -85,8 +89,6 @@ setmetatable(Any, AnyMeta)
 ---@field mainCtor string 主构造方法
 local ClassBuilder = {
 	className = "Any",
-	ctor = "new",
-	mainCtor = 'new',
 	extends = Any,
 }
 
@@ -269,11 +271,16 @@ function ClassBuilder:build()
 	if extends then
 		rawset(meta, "__index", extends)
 		rawset(class, "super", extends)
-		for k, v in pairs(getmetatable(extends)) do
+		local extendsMeta = getmetatable(extends)
+		for k, v in pairs(extendsMeta) do
 			if meta[k] == nil then
 				meta[k] = v
 			end
 		end
+
+		-- 设置构造方法
+		self.ctor = self.ctor or extendsMeta.__ctor
+		self.mainCtor = self.mainCtor or extendsMeta.__mainCtor
 	end
 
 	-- 初始化成员
@@ -300,6 +307,10 @@ function ClassBuilder:build()
 			local method = methods[v]
 			if method then
 				methods[v] = function(self, ...)
+					if self:isInstance() then
+						method(self, ...)
+						return self
+					end
 					local instance = self:newInstance()
 					method(instance, ...)
 					return instance
@@ -314,6 +325,8 @@ function ClassBuilder:build()
 
 	-- 载入主构造方法
 	meta.__call = rawget(class, self.mainCtor)
+	meta.__mainCtor = self.mainCtor
+	meta.__ctor = self.ctor
 
 	-- 解除构建状态
 	setmetatable(class, meta)
