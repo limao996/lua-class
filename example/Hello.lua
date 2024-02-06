@@ -52,6 +52,7 @@ end
 builder:build()
 
 -- 使用主构造方法实例化，默认主构造方法为new
+-- 主构造方法没有补全支持
 local me = Person("Limao", 22)
 -- 使用命名构造方法实例化，默认命名构造方法为new
 local you = Person:new("Unknown", 18)
