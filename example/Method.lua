@@ -1,12 +1,13 @@
 ---
 --- Project Name: lua-class
 --- Created by limao996.
---- DateTime: 2024/2/9 9:52
+--- DateTime: 2024/2/9 11:52
 ---
 --- Open Source:
 --- [Gitee](https://gitee.com/limao996/lua-class)
 --- [Github](https://github.com/limao996/lua-class)
 ---
+
 
 -- 导入class包
 require "class"
@@ -16,28 +17,24 @@ Package("org.example")
 
 -- 创建Class
 --- 类
----@class FieldTest: Any
----@field field number 测试成员
-local Test = Class("FieldTest")
+---@class MethodTest: Any
+local Test = Class("MethodTest")
 -- 获取Class构建器
 local builder = Test.builder
 
--- 静态初始化成员 方案1
--- Test.field = 0
+-- 声明方法 方案1
+function Test:say(content)
+	print(self, content)
+end
 
---[[ 静态初始化成员 方案2
-builder.fields = {
-	field = 0
+--[[ 声明方法 方案2
+builder.methods = {
+	say = function(self, content)
+		print(self, content)
+	end
 }
 ]]
 
--- 动态初始化成员
-function builder:fields()
-	self.field = 0
-end
-
--- 如果有非共用对象，建议使用动态初始化，反之静态初始化
--- 仅在实例中存在的成员建议在构造方法中初始化（动态初始化会影响实例化效率）
 -- 构建时只能选择一种方案，否则有概率出错
 
 -- 实现构造方法
@@ -51,7 +48,5 @@ builder:build()
 
 -- 测试
 local mTest = Test()
-Test.field = 1
-mTest.field = 2
-print(Test.field)
-print(mTest.field)
+Test:say("Hi")
+mTest:say("Hello")

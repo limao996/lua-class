@@ -148,9 +148,8 @@ end
 ---@return self
 function Any:newInstance()
 	local instance = {}
-	local class = self
 	local meta = { __address = getAddress(instance) }
-	local classMeta = class:getMeta()
+	local classMeta = getmetatable(self)
 	for k, v in pairs(classMeta) do
 		meta[k] = v
 	end
@@ -199,7 +198,6 @@ local BuildMeta = {
 		return rawget(self, key)
 	end,
 	__newindex = function(self, key, value)
-		---@type ClassBuilder
 		local builder = self.builder
 		if type(value) == "function" then
 			builder.methods = builder.methods or {}
