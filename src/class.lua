@@ -47,7 +47,9 @@ local ClassMeta = {
 --- 创建的所有class都将继承该类
 ---@class Any
 ---@field builder ClassBuilder|nil 类构建器
----@field Meta table|nil 构建时类元表
+---@field Meta table|nil 元表构建器
+---@field Setter table|nil Setter构建器
+---@field Getter table|nil Getter构建器
 ---@field super Any 父类
 Any = {}
 
@@ -57,12 +59,14 @@ Any = {}
 ---@field private __fields table|fun(obj:Any, isInstance:boolean):void 初始化成员
 ---@field private __mainCtor string 主构建器
 ---@field private __ctor string 主构建器
+---@field private __setter table Setter表
+---@field private __getter table Getter表
 local AnyMeta = {
 	__name = "Any",
 	__tostring = ClassMeta.__tostring,
 	__class = Any,
 	__mainCtor = "new",
-	__ctor="new"
+	__ctor = "new"
 }
 -- 绑定元表
 setmetatable(Any, AnyMeta)
@@ -86,11 +90,49 @@ setmetatable(Any, AnyMeta)
 ---@field methods function[] 类方法
 ---@field meta function[] 类方法
 ---@field ctor string[]|string 构造方法
+---@field setterMap table<string, fun(self:Any, value:any):void> Setter表
+---@field getterMap table<string, fun(self:Any):any> Getter表
 ---@field mainCtor string 主构造方法
 local ClassBuilder = {
 	className = "Any",
 	extends = Any,
 }
+
+--- 为成员添加 Setter
+---```lua
+---builder:setter("field", function(self, value)
+---   self.mField = value
+---end)
+---```
+---@param field string 成员
+---@param fn fun(self:Any, value:any):void 函数
+---@return void
+function ClassBuilder:setter(field, fn)
+	local map = self.setterMap
+	if not map then
+		map = {}
+		self.setterMap = map
+	end
+	map[field] = fn
+end
+
+--- 为成员添加 Getter
+---```lua
+---builder:getter("field", function(self)
+---   return self.mField
+---end)
+---```
+---@param field string 成员
+---@param fn fun(self:Any):any 函数
+---@return void
+function ClassBuilder:getter(field, fn)
+	local map = self.getterMap
+	if not map then
+		map = {}
+		self.getterMap = map
+	end
+	map[field] = fn
+end
 
 --- 检查实例归属
 ---@param instance Any 类或实例
@@ -192,6 +234,16 @@ local BuildMeta = {
 			local meta = builder.meta or {}
 			builder.meta = meta
 			return meta
+		elseif key == "Setter" then
+			local builder = rawget(self, 'builder')
+			local setterMap = builder.setterMap or {}
+			builder.setterMap = setterMap
+			return setterMap
+		elseif key == "Getter" then
+			local builder = rawget(self, 'builder')
+			local getterMap = builder.getterMap or {}
+			builder.getterMap = getterMap
+			return getterMap
 		end
 		return rawget(self, key)
 	end,
@@ -262,14 +314,16 @@ function ClassBuilder:build()
 	setmetatable(class, nil)
 
 	-- 设置元属性
-	rawset(meta, "__name", self.className)
-	rawset(meta, "__class", class)
-	rawset(meta, "__fields", self.fields)
+	meta.__name = self.className
+	meta.__class = class
+	meta.__fields = self.fields
+	meta.__setter = self.setterMap
+	meta.__getter = self.getterMap
 
 	-- 设置父类
 	local extends = self.extends
 	if extends then
-		rawset(meta, "__index", extends)
+		meta.__index = extends
 		rawset(class, "super", extends)
 		local extendsMeta = getmetatable(extends)
 		for k, v in pairs(extendsMeta) do
@@ -281,6 +335,36 @@ function ClassBuilder:build()
 		-- 设置构造方法
 		self.ctor = self.ctor or extendsMeta.__ctor
 		self.mainCtor = self.mainCtor or extendsMeta.__mainCtor
+	end
+
+	-- 载入Setter
+	local setterMap = self.setterMap
+	if setterMap then
+		local newindex = meta.__newindex or rawset
+		function meta:__newindex(k, v)
+			local fn = setterMap[k]
+			if fn ~= nil then
+				fn(self, v)
+			else
+				newindex(self, k, v)
+			end
+		end
+	end
+
+	-- 载入Getter
+	local getterMap = self.getterMap
+	if getterMap then
+		local index = meta.__index or rawget
+		function meta:__index(k)
+			local fn = getterMap[k]
+			if fn ~= nil then
+				local v = fn(self)
+				if v ~= nil then
+					return v
+				end
+			end
+			return index(self, k)
+		end
 	end
 
 	-- 初始化成员
